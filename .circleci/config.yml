@@ -13,7 +13,7 @@ jobs:
             --acl public-read \
             --cache-control "max-age=86400"
           from: bucket
-          install-aws-cli: false
+          install-aws-cli: true
           role-arn: 'arn:aws:iam::100243377175/role/VALID-S3-ROLE'
           to: 's3://circlecidemo/prefix'
       - aws-s3/copy:
