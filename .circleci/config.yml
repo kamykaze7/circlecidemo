@@ -10,12 +10,6 @@ jobs:
       - aws-cli/setup:
           profile-name: example
       - run: echo "Run your code here"
-workflows:
-  aws-cli:
-    jobs:
-      - aws-cli-example:
-          context: aws
-jobs:
   build:
     docker:
       - image: 'cimg/python:3.10'
@@ -37,5 +31,7 @@ jobs:
 workflows:
   s3-example:
     jobs:
+      - aws-cli-example:
+          context: aws
       - build
 
