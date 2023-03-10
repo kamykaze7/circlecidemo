@@ -1,48 +1,27 @@
-version: 2.1
+version: '2.1'
+orbs:
+  aws-s3: circleci/aws-s3@3.1
 jobs:
   build:
-    machine:
-      image: ubuntu-2004:202010-01
+    docker:
+      - image: 'cimg/python:3.10'
     steps:
       - checkout
-      - run:
-          name: Installing AWS CLI
-          command: |
-            sudo apt-get update
-            sudo apt install python3-pip
-            sudo pip3 install awsebcli --upgrade
-      - run: cd /var/www && npm install && npm run build
-      - persist_to_workspace:
-          root: .
-          paths:
-            - .
-  test:
-    machine:
-      image: ubuntu-2004:202010-01
-    steps:
-      - attach_workspace:
-          at: .
-      - checkout
-      - run: cd /var/www && npm run test
-      - persist_to_workspace:
-          root: .
-          paths:
-            - .
-  deploy:
-    machine:
-        image: ubuntu-2004:202010-01
-    steps:
-      - attach_workspace:
-          at: .
-      - checkout
-      - run: aws s3 sync ./app/build s3://circlecidemo
+      - run: mkdir bucket && echo "lorem ipsum" > bucket/build_asset.txt
+      - aws-s3/sync:
+          arguments: |
+            --acl public-read \
+            --cache-control "max-age=86400"
+          from: bucket
+          role-arn: 'arn:aws:iam::100243377175/role/VALID-S3-ROLE'
+          to: 's3://cicddemo/prefix'
+      - aws-s3/copy:
+          arguments: '--dryrun'
+          from: bucket/build_asset.txt
+          install-aws-cli: true
+          to: 's3://circlecidemo'
 workflows:
-  build_test_deploy:
+  s3-example:
     jobs:
       - build
-      - test:
-          requires:
-            - build
-      - deploy:
-          requires:
-            - test
+
