@@ -1,40 +1,38 @@
-version: '2.1'
-
+version: 2.1
+setup: true
 orbs:
-  aws-s3: circleci/aws-s3@3.1
-  aws-cli: circleci/aws-cli@3.1
-  
-jobs:
-  aws-cli-example:
-    executor: aws-cli/default
-    steps:
-      - checkout
-      - aws-cli/setup:
-          profile-name: example
-      - run: echo "Run your code here"
-      
-  build:
-    docker:
-      - image: 'cimg/python:3.10'
-    steps:
-      - checkout
-      - run: mkdir bucket && echo "lorem ipsum" > bucket/build_asset.txt
-      - aws-s3/sync:
-          arguments: |
-            --acl public-read \
-            --cache-control "max-age=86400"
-          from: bucket
-          role-arn: 'arn:aws:iam::100243377175/role/VALID-S3-ROLE'
-          to: 's3://circlecidemo/prefix'
-      - aws-s3/copy:
-          arguments: '--dryrun'
-          from: bucket/build_asset.txt
-          install-aws-cli: false
-          to: 's3://circlecidemo'
+  orb-tools: circleci/orb-tools@11.1
+  shellcheck: circleci/shellcheck@3.1
+
+filters: &filters
+  tags:
+    only: /.*/
+
 workflows:
-  s3-example:
+  lint-pack:
     jobs:
-      - aws-cli-example:
-          context: aws
-      - build
+      - orb-tools/lint:
+          filters: *filters
+      - orb-tools/pack:
+          filters: *filters
+      - orb-tools/review:
+          filters: *filters
+      - shellcheck/check:
+          exclude: SC2148,SC2038,SC2086,SC2002,SC2016,SC1090
+          filters: *filters
+      - orb-tools/publish:
+          orb-name: circleci/aws-cli
+          vcs-type: << pipeline.project.type >>
+          requires:
+            [orb-tools/lint, orb-tools/review, orb-tools/pack, shellcheck/check]
+          # Use a context to hold your publishing token.
+          context: orb-publisher
+          filters: *filters
+      # Triggers the next workflow in the Orb Development Kit.
+      - orb-tools/continue:
+          pipeline-number: << pipeline.number >>
+          vcs-type: << pipeline.project.type >>
+          requires: [orb-tools/publish]
+          filters: *filters
+
 
